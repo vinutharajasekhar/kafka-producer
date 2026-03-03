@@ -1,14 +1,14 @@
 package com.rajasekhar.kafka.producer.service;
 
-import com.rajasekhar.kafka.producer.event.ProductCreatedEvent;
+import com.rajasekhar.common.event.ProductCreatedEvent;
 import com.rajasekhar.kafka.producer.request.CreateProductRequest;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 @Service
@@ -37,9 +37,15 @@ public class ProductServiceImpl implements ProductService{
         });
         */
         System.out.println("Before publishing the product created event");
+        /*we are creating producerRecord object for passing unique value for each event in headers
+        for idempotence consumer testing
+         */
+        ProducerRecord<String, ProductCreatedEvent> producerRec =
+                new ProducerRecord<>("product-created-events-topic", productId, event);
+        producerRec.headers().add("messageId",UUID.randomUUID().toString().getBytes());
 
-        SendResult<String, ProductCreatedEvent> sendResult =  kafkaTemplate.send("product-created-events-topic", productId, event).get();
-
+        //SendResult<String, ProductCreatedEvent> sendResult =  kafkaTemplate.send("product-created-events-topic", productId, event).get();
+        SendResult<String, ProductCreatedEvent> sendResult = kafkaTemplate.send(producerRec).get();
         System.out.println("Partition : " + sendResult.getRecordMetadata().partition());
         System.out.println("Offset : " + sendResult.getRecordMetadata().offset());
         System.out.println("Topic : " + sendResult.getRecordMetadata().topic());
